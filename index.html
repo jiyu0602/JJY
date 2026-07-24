@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전국 초·중·고 학교 급식 & 시간표 & 커뮤니티</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col items-center p-3 sm:p-6">
+
+  <!-- 메인 스마트폰 뷰 컨테이너 -->
+  <div class="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200 flex flex-col min-h-[700px] my-auto">
+    
+    <!-- 헤더 영역 -->
+    <header class="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white p-5 rounded-b-3xl shadow-md">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-white/10 backdrop-blur-md rounded-xl">
+            <i data-lucide="school" class="w-6 h-6 text-blue-200"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight">학교생활 매니저</h1>
+            <p class="text-[11px] text-blue-100">전국 초·중·고 급식·시간표·익명게시판</p>
+          </div>
+        </div>
+        <span class="text-[10px] bg-white/20 backdrop-blur-md px-2.5 py-1 rounded-full font-medium text-blue-50">NEIS API 연동</span>
+      </div>
+
+      <!-- 학교 검색 입력 -->
+      <div class="relative">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input 
+          type="text" 
+          id="schoolSearch" 
+          placeholder="전국 모든 학교 검색 (예: 서울고, 경기초)" 
+          class="w-full pl-9 pr-8 py-2.5 bg-white text-slate-800 placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 text-xs transition-all shadow-inner"
+          autocomplete="off"
+        />
+        <button id="clearSearchBtn" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+          <i data-lucide="x-circle" class="w-4 h-4"></i>
+        </button>
+        <!-- 검색 결과 레이어 -->
+        <div id="searchResults" class="hidden absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 max-h-56 overflow-y-auto z-30 text-slate-700 text-xs divide-y divide-slate-100"></div>
+      </div>
+    </header>
+
+    <!-- 메인 콘텐츠 영역 -->
+    <main class="p-4 flex-1 flex flex-col gap-4">
+      
+      <!-- 상단 탭 (급식 / 시간표 / 익명게시판 / 희망급식) -->
+      <div class="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 text-[11px] font-semibold text-slate-500 gap-0.5">
+        <button id="tabMeal" class="flex-1 py-2 rounded-xl bg-white text-blue-600 shadow-sm flex items-center justify-center gap-1 transition-all">
+          <i data-lucide="utensils" class="w-3.5 h-3.5"></i> 급식
+        </button>
+        <button id="tabTimetable" class="flex-1 py-2 rounded-xl hover:text-slate-700 flex items-center justify-center gap-1 transition-all">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i> 시간표
+        </button>
+        <button id="tabBoard" class="flex-1 py-2 rounded-xl hover:text-slate-700 flex items-center justify-center gap-1 transition-all">
+          <i data-lucide="message-square" class="w-3.5 h-3.5"></i> 대나무숲
+        </button>
+        <button id="tabWish" class="flex-1 py-2 rounded-xl hover:text-slate-700 flex items-center justify-center gap-1 transition-all">
+          <i data-lucide="heart-handshake" class="w-3.5 h-3.5"></i> 희망급식
+        </button>
+      </div>
+
+      <!-- 날짜 선택 바 (급식 및 시간표 공통) -->
+      <div id="dateBar" class="flex items-center justify-between bg-blue-50/70 p-2.5 rounded-2xl border border-blue-100">
+        <button id="prevDateBtn" class="p-1.5 hover:bg-white rounded-xl transition-colors text-blue-600 active:scale-95">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
+        <div class="flex items-center gap-2">
+          <i data-lucide="calendar" class="w-4 h-4 text-blue-500"></i>
+          <input 
+            type="date" 
+            id="datePicker" 
+            class="bg-transparent font-semibold text-slate-700 focus:outline-none cursor-pointer text-xs"
+          />
+        </div>
+        <button id="nextDateBtn" class="p-1.5 hover:bg-white rounded-xl transition-colors text-blue-600 active:scale-95">
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- 현재 선택된 학교 정보 -->
+      <div class="flex items-center justify-between px-1 text-xs text-slate-500">
+        <div class="flex items-center gap-1.5">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-500"></i>
+          <span id="currentSchoolDisplay" class="font-bold text-slate-800">서울고등학교</span>
+        </div>
+        <span id="schoolTypeBadge" class="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-md font-medium">고등학교</span>
+      </div>
+
+      <!-- 뷰 1: 급식 식단 뷰 -->
+      <div id="mealView" class="flex-1 flex flex-col gap-3">
+        <div id="mealContainer" class="flex-1 flex flex-col">
+          <!-- 급식 카드 리스트 dynamic 생성 -->
+        </div>
+
+        <!-- 원산지 정보 요약 -->
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+          <div class="flex items-center gap-1 text-xs font-bold text-slate-600 mb-1">
+            <i data-lucide="file-text" class="w-3.5 h-3.5 text-blue-500"></i> 주요 식재료 원산지
+          </div>
+          <p id="originInfo" class="text-[11px] text-slate-500 leading-relaxed">
+            쌀(국내산), 배추김치(배추:국내산, 고춧가루:국내산), 쇠고기(국내산 한우), 돼지고기(국내산), 닭고기(국내산)
+          </p>
+        </div>
+      </div>
+
+      <!-- 뷰 2: 시간표 뷰 -->
+      <div id="timetableView" class="hidden flex-1 flex flex-col gap-3">
+        <!-- 학년 및 반 선택 컨트롤 -->
+        <div class="flex items-center gap-2 bg-indigo-50/60 p-2.5 rounded-2xl border border-indigo-100 text-xs">
+          <i data-lucide="users" class="w-4 h-4 text-indigo-500 ml-1"></i>
+          <span class="font-bold text-slate-700 text-[11px]">학급 설정:</span>
+          
+          <select id="gradeSelect" class="bg-white border border-indigo-200 text-slate-700 font-semibold px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="1">1학년</option>
+            <option value="2">2학년</option>
+            <option value="3">3학년</option>
+          </select>
+
+          <select id="classSelect" class="bg-white border border-indigo-200 text-slate-700 font-semibold px-2 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="1">1반</option>
+            <option value="2">2반</option>
+            <option value="3">3반</option>
+            <option value="4">4반</option>
+            <option value="5">5반</option>
+            <option value="6">6반</option>
+            <option value="7">7반</option>
+            <option value="8">8반</option>
+            <option value="9">9반</option>
+            <option value="10">10반</option>
+          </select>
+        </div>
+
+        <div class="bg-gradient-to-br from-indigo-50/50 to-white p-4 rounded-2xl border border-indigo-100 flex-1 flex flex-col">
+          <div class="flex items-center justify-between pb-3 mb-2 border-b border-indigo-100">
+            <span class="text-xs font-bold text-indigo-600 bg-indigo-100/60 px-2.5 py-1 rounded-lg">
+              오늘의 실시간 나이스 시간표
+            </span>
+            <span id="classInfoDisplay" class="text-[11px] font-bold text-indigo-900">1학년 1반 기준</span>
+          </div>
+          <div id="timetableContainer" class="flex-1 space-y-2 overflow-y-auto max-h-[280px] pr-1">
+            <!-- 시간표 dynamic 생성 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 뷰 3: 익명 대나무숲 게시판 뷰 -->
+      <div id="boardView" class="hidden flex-1 flex flex-col gap-3">
+        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 flex-1 flex flex-col">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-emerald-500"></i> 익명 학생 대나무숲
+            </h3>
+            <span class="text-[10px] text-slate-400">클린 커뮤니티</span>
+          </div>
+
+          <!-- 새 글 작성 폼 -->
+          <form id="boardForm" class="mb-3 space-y-2">
+            <div class="flex gap-2">
+              <input 
+                type="text" 
+                id="boardTitle" 
+                placeholder="제목을 입력하세요" 
+                required 
+                class="flex-1 px-3 py-1.5 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white"
+              />
+            </div>
+            <textarea 
+              id="boardContent" 
+              rows="2" 
+              placeholder="클린한 학생 익명 소통 공간입니다. (비방/비속어 금지)" 
+              required 
+              class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-white resize-none"
+            ></textarea>
+            <button 
+              type="submit" 
+              class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all active:scale-98 flex items-center justify-center gap-1 shadow-sm"
+            >
+              <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i> 익명 글 등록하기
+            </button>
+          </form>
+
+          <!-- 글 목록 -->
+          <div id="boardPostList" class="flex-1 space-y-2.5 overflow-y-auto max-h-[220px] pr-1">
+            <!-- 게시글 리스트 dynamic 생성 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 뷰 4: 희망 급식 신청 뷰 -->
+      <div id="wishView" class="hidden flex-1 flex flex-col gap-3">
+        <div class="bg-blue-50/40 p-4 rounded-2xl border border-blue-100 flex-1 flex flex-col">
+          <h3 class="text-xs font-bold text-blue-900 mb-1 flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4 text-blue-500"></i> 먹고 싶은 급식 신청하기
+          </h3>
+          <p class="text-[11px] text-slate-500 mb-3">영양사 선생님께 희망하는 메뉴를 건의해 보세요!</p>
+
+          <form id="wishForm" class="space-y-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">희망 메뉴명</label>
+              <input 
+                type="text" 
+                id="wishMenuName"
+                placeholder="예: 마라탕, 뿌링클 치킨, 수제 와플" 
+                required
+                class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+              />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">신청 이유 / 한마디</label>
+              <textarea 
+                id="wishReason"
+                rows="2" 
+                placeholder="시험 기간 응원 메뉴로 먹고 싶어요!" 
+                class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white resize-none"
+              ></textarea>
+            </div>
+            <button 
+              type="submit" 
+              class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-98 flex items-center justify-center gap-1"
+            >
+              <i data-lucide="send" class="w-3.5 h-3.5"></i> 희망 급식 제출하기
+            </button>
+          </form>
+
+          <!-- 신청 목록 -->
+          <div class="mt-4 pt-3 border-t border-slate-200/80">
+            <span class="text-[11px] font-bold text-slate-600 block mb-2">실시간 학생 신청 현황</span>
+            <div id="wishList" class="space-y-2 max-h-32 overflow-y-auto pr-1">
+              <!-- 예시 신청 아이템 -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="bg-slate-50 p-3 text-center text-[11px] text-slate-400 border-t border-slate-100 flex items-center justify-between px-4">
+      <span>건전한 클린 커뮤니티 준수</span>
+      <span class="text-blue-500 font-medium">NEIS API 연동</span>
+    </footer>
+  </div>
+
+  <!-- 알레르기 상세 모달 (팝업) -->
+  <div id="allergyModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xs w-full p-5 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-amber-100 rounded-xl text-amber-600">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+          <h3 class="font-bold text-slate-800 text-sm">알레르기 정보</h3>
+        </div>
+        <button id="closeModalBtn" class="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="modalContent" class="space-y-2 my-4">
+        <!-- 알레르기 내용 들어가기 -->
+      </div>
+      <button id="confirmModalBtn" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl">
+        확인
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // 현재 선택된 학교 객체 (기본값)
+    let currentSchool = {
+      ATPT_OFCDC_SC_CODE: "B10", // 서울특별시교육청
+      SD_SCHUL_CODE: "7010537",
+      SCHUL_NM: "서울고등학교",
+      SCHUL_KND_SC_NM: "고등학교"
+    };
+
+    // 오늘 날짜 포맷 함수 (YYYY-MM-DD)
+    function getFormattedDate(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getNeisDateFormat(dateStr) {
+      return dateStr.replace(/-/g, "");
+    }
+
+    // 알레르기 19가지 매핑 데이터
+    const allergyMap = {
+      1: { name: "난류", desc: "계란, 메추리알 등 조류의 알 종류" },
+      2: { name: "우유", desc: "우유 및 치즈, 버터, 연유 등 가공품" },
+      3: { name: "메밀", desc: "메밀국수, 메밀묵 등 메밀 함유 제품" },
+      4: { name: "땅콩", desc: "땅콩 및 견과류 가공품" },
+      5: { name: "대두", desc: "두부, 된장, 간장, 콩나물 등 콩 제품" },
+      6: { name: "밀", desc: "빵, 면류, 튀김옷, 전분 등 밀가루 제품" },
+      7: { name: "고등어", desc: "고등어 및 생선류" },
+      8: { name: "게", desc: "게 및 갑각류 가공품" },
+      9: { name: "새우", desc: "새우, 새우젓 등 갑각류" },
+      10: { name: "돼지고기", desc: "햄, 소세지, 돈까스, 찌개용 돼지고기" },
+      11: { name: "복숭아", desc: "복숭아 및 관련 과일 음료" },
+      12: { name: "토마토", desc: "토마토, 케첩, 스파게티 소스 등" },
+      13: { name: "아황산류", desc: "건조 과일, 포도주 등 식품 첨가물" },
+      14: { name: "호두", desc: "호두 및 견과류 함유 제품" },
+      15: { name: "닭고기", desc: "치킨, 찜닭, 닭갈비 등 조류 육류" },
+      16: { name: "쇠고기", desc: "불고기, 소고기국 등 소고기 육류" },
+      17: { name: "오징어", desc: "오징어, 문어, 낙지 등 연체동물" },
+      18: { name: "조개류", desc: "굴, 전복, 홍합, 바지락 등 조개류" },
+      19: { name: "잣", desc: "잣 및 견과류 양념" }
+    };
+
+    // 대나무숲 익명 게시판 샘플 데이터
+    const boardPosts = [
+      { id: 1, author: "익명104", title: "오늘 급식 수제돈까스 진짜 레전드다", content: "소스 엄청 고소하고 바삭했음! 영양사 선생님 감사합니다 ㅠㅠ", likes: 18, time: "10분 전" },
+      { id: 2, author: "익명502", title: "시험 범위 3단원까지 맞나요?", content: "수학 교과서 82쪽까지인지 아시는 분 댓글 부탁드립니다!", likes: 5, time: "30분 전" },
+      { id: 3, author: "익명301", title: "체육관에 체육복 두고 온 사람", content: "파란색 체육복 상의 2학년 체육관 벤치에 있어요! 매점에 맡겨둠", likes: 12, time: "1시간 전" }
+    ];
+
+    // 희망 급식 샘플 데이터
+    const wishListArray = [
+      { menu: "뿌링클 치킨 & 치즈볼", reason: "시험 끝난 날 기념 메뉴로 먹고 싶어요!", votes: 15 },
+      { menu: "마라탕 & 꿔바로우", reason: "스트레스 풀어주는 매콤한 식단 원해요!", votes: 11 }
+    ];
+
+    // DOM 요소 참조
+    const schoolSearch = document.getElementById("schoolSearch");
+    const searchResults = document.getElementById("searchResults");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+    const currentSchoolDisplay = document.getElementById("currentSchoolDisplay");
+    const schoolTypeBadge = document.getElementById("schoolTypeBadge");
+    
+    const datePicker = document.getElementById("datePicker");
+    const prevDateBtn = document.getElementById("prevDateBtn");
+    const nextDateBtn = document.getElementById("nextDateBtn");
+
+    const tabMeal = document.getElementById("tabMeal");
+    const tabTimetable = document.getElementById("tabTimetable");
+    const tabBoard = document.getElementById("tabBoard");
+    const tabWish = document.getElementById("tabWish");
+
+    const mealView = document.getElementById("mealView");
+    const timetableView = document.getElementById("timetableView");
+    const boardView = document.getElementById("boardView");
+    const wishView = document.getElementById("wishView");
+    const dateBar = document.getElementById("dateBar");
+
+    const mealContainer = document.getElementById("mealContainer");
+    const timetableContainer = document.getElementById("timetableContainer");
+    const originInfo = document.getElementById("originInfo");
+
+    const gradeSelect = document.getElementById("gradeSelect");
+    const classSelect = document.getElementById("classSelect");
+    const classInfoDisplay = document.getElementById("classInfoDisplay");
+
+    const boardForm = document.getElementById("boardForm");
+    const boardTitle = document.getElementById("boardTitle");
+    const boardContent = document.getElementById("boardContent");
+    const boardPostList = document.getElementById("boardPostList");
+
+    const allergyModal = document.getElementById("allergyModal");
+    const modalContent = document.getElementById("modalContent");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const confirmModalBtn = document.getElementById("confirmModalBtn");
+
+    const wishForm = document.getElementById("wishForm");
+    const wishMenuName = document.getElementById("wishMenuName");
+    const wishReason = document.getElementById("wishReason");
+    const wishList = document.getElementById("wishList");
+
+    // 초기 날짜 설정
+    datePicker.value = getFormattedDate(0);
+
+    // 1. 학교 검색 (NEIS API)
+    let searchTimeout = null;
+    schoolSearch.addEventListener("input", (e) => {
+      const query = e.target.value.trim();
+      if (!query) {
+        searchResults.classList.add("hidden");
+        clearSearchBtn.classList.add("hidden");
+        return;
+      }
+      clearSearchBtn.classList.remove("hidden");
+
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        fetchSchools(query);
+      }, 300);
+    });
+
+    async function fetchSchools(schoolName) {
+      searchResults.innerHTML = `<div class="p-3 text-slate-400 text-xs text-center">전국 학교 검색 중...</div>`;
+      searchResults.classList.remove("hidden");
+
+      try {
+        const url = `https://open.neis.go.kr/hub/schoolInfo?Type=json&pIndex=1&pSize=15&SCHUL_NM=${encodeURIComponent(schoolName)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.schoolInfo) {
+          const list = data.schoolInfo[1].row;
+          searchResults.innerHTML = list.map(item => `
+            <div class="p-2.5 hover:bg-blue-50 cursor-pointer transition-colors flex items-center justify-between" 
+                 onclick='selectSchool(${JSON.stringify(item)})'>
+              <div>
+                <span class="font-bold text-slate-800">${item.SCHUL_NM}</span>
+                <p class="text-[10px] text-slate-400">${item.LCTN_SC_NM || '전국'}</p>
+              </div>
+              <span class="text-[10px] bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded font-medium">${item.SCHUL_KND_SC_NM}</span>
+            </div>
+          `).join("");
+        } else {
+          searchResults.innerHTML = `<div class="p-3 text-slate-400 text-xs text-center">검색 결과가 없습니다.</div>`;
+        }
+      } catch (err) {
+        searchResults.innerHTML = `<div class="p-3 text-slate-400 text-xs text-center">검색 중 오류가 발생했습니다.</div>`;
+      }
+    }
+
+    window.selectSchool = function(schoolObj) {
+      currentSchool = schoolObj;
+      currentSchoolDisplay.textContent = schoolObj.SCHUL_NM;
+      schoolTypeBadge.textContent = schoolObj.SCHUL_KND_SC_NM || "학교";
+      schoolSearch.value = schoolObj.SCHUL_NM;
+      searchResults.classList.add("hidden");
+
+      renderMeal();
+      renderTimetable();
+    };
+
+    // 2. 급식 로드 (NEIS API)
+    async function renderMeal() {
+      mealContainer.innerHTML = `
+        <div class="flex-1 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
+          <div class="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2"></div>
+          <p class="text-xs text-slate-500 font-medium">급식 정보를 불러오는 중...</p>
+        </div>
+      `;
+
+      const dateStr = getNeisDateFormat(datePicker.value);
+      const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?Type=json&pIndex=1&pSize=5&ATPT_OFCDC_SC_CODE=${currentSchool.ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${currentSchool.SD_SCHUL_CODE}&MLSV_YMD=${dateStr}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.mealServiceDietInfo) {
+          const row = data.mealServiceDietInfo[1].row[0];
+          displayMealData(row);
+        } else {
+          mealContainer.innerHTML = `
+            <div class="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <i data-lucide="utensils-crossed" class="w-10 h-10 text-slate-300 mb-2"></i>
+              <p class="font-bold text-xs text-slate-600">등록된 급식 정보가 없습니다.</p>
+              <p class="text-[10px] text-slate-400 mt-1">주말, 방학 또는 급식 미운영일 수 있습니다.</p>
+            </div>
+          `;
+          originInfo.textContent = "등록된 원산지 정보가 없습니다.";
+          lucide.createIcons();
+        }
+      } catch (err) {
+        mealContainer.innerHTML = `
+          <div class="flex-1 flex flex-col items-center justify-center text-center p-6 bg-amber-50/50 rounded-2xl border border-amber-200/80">
+            <i data-lucide="wifi-off" class="w-8 h-8 text-amber-400 mb-2"></i>
+            <p class="font-bold text-xs text-amber-800">네트워크 데이터를 가져올 수 없습니다.</p>
+          </div>
+        `;
+        lucide.createIcons();
+      }
+    }
+
+    function displayMealData(data) {
+      const rawDish = data.DDISH_NM || "";
+      const dishItems = rawDish.split("<br/>").filter(item => item.trim() !== "").map(item => {
+        const allergyMatch = item.match(/\(([\d\.]+)\)/);
+        let allergyCodes = [];
+        if (allergyMatch) {
+          allergyCodes = allergyMatch[1].split(".").map(n => parseInt(n, 10));
+        }
+        const cleanName = item.replace(/\([\d\.]+\)/g, "").trim();
+        return { name: cleanName, allergy: allergyCodes };
+      });
+
+      let itemsHtml = dishItems.map(item => {
+        const allergyBadges = item.allergy.map(code => 
+          `<button onclick="openAllergyModal(${code})" class="inline-block text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded border border-amber-200 transition-colors cursor-pointer" title="알레르기 정보 보기">
+            ${code}
+          </button>`
+        ).join(" ");
+
+        return `
+          <li class="flex items-center justify-between py-2 border-b border-slate-100 last:border-none">
+            <span class="text-xs font-semibold text-slate-700">${item.name}</span>
+            <div class="flex gap-1 flex-wrap justify-end max-w-[130px]">
+              ${allergyBadges}
+            </div>
+          </li>
+        `;
+      }).join("");
+
+      mealContainer.innerHTML = `
+        <div class="bg-gradient-to-br from-blue-50/50 to-white p-3.5 rounded-2xl border border-blue-100 flex-1 flex flex-col">
+          <div class="flex items-center justify-between pb-2.5 mb-2 border-b border-blue-100">
+            <span class="text-xs font-bold text-blue-600 bg-blue-100/70 px-2.5 py-0.5 rounded-lg">
+              ${data.MMEAL_SC_NM || '급식'}
+            </span>
+            <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+              <i data-lucide="flame" class="w-3.5 h-3.5 text-orange-400"></i> ${data.CAL_INFO || '칼로리 정보없음'}
+            </span>
+          </div>
+          <ul class="flex-1 divide-y divide-slate-50">
+            ${itemsHtml}
+          </ul>
+        </div>
+      `;
+
+      if (data.ORISC_INFO) {
+        originInfo.textContent = data.ORISC_INFO.replace(/<br\/>/g, ", ");
+      } else {
+        originInfo.textContent = "원산지 정보가 제공되지 않습니다.";
+      }
+
+      lucide.createIcons();
+    }
+
+    // 3. 실시간 나이스(NEIS) 시간표 API 로드
+    async function renderTimetable() {
+      const grade = gradeSelect.value;
+      const cls = classSelect.value;
+      classInfoDisplay.textContent = `${grade}학년 ${cls}반 기준`;
+
+      timetableContainer.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
+          <div class="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-2"></div>
+          <p class="text-xs text-slate-500 font-medium">나이스 실시간 시간표를 불러오는 중...</p>
+        </div>
+      `;
+
+      const dateStr = getNeisDateFormat(datePicker.value);
+      const schoolType = currentSchool.SCHUL_KND_SC_NM || "";
+      
+      // 학교 종류에 맞는 나이스 API 엔드포인트 선정
+      let endpoint = "hisTimetable"; // 고등학교
+      if (schoolType.includes("중학교")) {
+        endpoint = "misTimetable";
+      } else if (schoolType.includes("초등학교")) {
+        endpoint = "elsTimetable";
+      }
+
+      const url = `https://open.neis.go.kr/hub/${endpoint}?Type=json&pIndex=1&pSize=10&ATPT_OFCDC_SC_CODE=${currentSchool.ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${currentSchool.SD_SCHUL_CODE}&ALL_TI_YMD=${dateStr}&GRADE=${grade}&CLASS_NM=${cls}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data[endpoint]) {
+          const rows = data[endpoint][1].row;
+          // 교시 순으로 정렬
+          rows.sort((a, b) => parseInt(a.PERIO) - parseInt(b.PERIO));
+
+          timetableContainer.innerHTML = rows.map(item => {
+            // 교사명 정보 파싱 (공공 API에 성함이 포함되어 있으면 그대로 표시)
+            const teacherName = item.TEACHER_NM || item.TR_NM || "";
+            const teacherDisplay = teacherName ? `${teacherName} 선생님` : "담당 교사";
+
+            return `
+              <div class="flex items-center justify-between p-2.5 bg-white rounded-xl border border-indigo-50/80 shadow-sm">
+                <div class="flex items-center gap-3">
+                  <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+                    ${item.PERIO}
+                  </span>
+                  <div>
+                    <p class="text-xs font-bold text-slate-800">${item.ITRT_CNTNT}</p>
+                    <p class="text-[10px] text-slate-400">${grade}-${cls} 교실</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                  <i data-lucide="user" class="w-3 h-3 text-indigo-400"></i>
+                  <span class="text-[11px] text-slate-600 font-bold">${teacherDisplay}</span>
+                </div>
+              </div>
+            `;
+          }).join("");
+        } else {
+          timetableContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <i data-lucide="calendar-x" class="w-10 h-10 text-slate-300 mb-2"></i>
+              <p class="font-bold text-xs text-slate-600">등록된 시간표 정보가 없습니다.</p>
+              <p class="text-[10px] text-slate-400 mt-1">주말, 공휴일 또는 나이스 미등록 학급일 수 있습니다.</p>
+            </div>
+          `;
+        }
+      } catch (err) {
+        timetableContainer.innerHTML = `
+          <div class="flex flex-col items-center justify-center text-center p-6 bg-amber-50/50 rounded-2xl border border-amber-200/80">
+            <i data-lucide="wifi-off" class="w-8 h-8 text-amber-400 mb-2"></i>
+            <p class="font-bold text-xs text-amber-800">시간표 데이터를 가져올 수 없습니다.</p>
+          </div>
+        `;
+      }
+
+      lucide.createIcons();
+    }
+
+    gradeSelect.addEventListener("change", renderTimetable);
+    classSelect.addEventListener("change", renderTimetable);
+
+    // 4. 익명 대나무숲 게시판 기능
+    function renderBoardPosts() {
+      boardPostList.innerHTML = boardPosts.map(post => `
+        <div class="p-3 bg-white rounded-xl border border-slate-200/80 shadow-sm text-xs space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">${post.title}</span>
+            <span class="text-[10px] text-slate-400">${post.time}</span>
+          </div>
+          <p class="text-[11px] text-slate-600 leading-relaxed">${post.content}</p>
+          <div class="flex items-center justify-between pt-1 border-t border-slate-50 text-[10px] text-slate-400">
+            <span class="font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">${post.author}</span>
+            <button onclick="likePost(${post.id})" class="flex items-center gap-1 text-slate-500 hover:text-red-500 transition-colors">
+              <i data-lucide="thumbs-up" class="w-3 h-3"></i> 추천 ${post.likes}
+            </button>
+          </div>
+        </div>
+      `).join("");
+      lucide.createIcons();
+    }
+
+    window.likePost = function(id) {
+      const post = boardPosts.find(p => p.id === id);
+      if (post) {
+        post.likes++;
+        renderBoardPosts();
+      }
+    };
+
+    boardForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = boardTitle.value.trim();
+      const content = boardContent.value.trim();
+
+      const badWords = ["욕설", "비방", "바보"];
+      const containsBadWord = badWords.some(word => title.includes(word) || content.includes(word));
+
+      if (containsBadWord) {
+        alert("바르고 고운 말을 사용해주세요! 비속어나 비방글은 작성할 수 없습니다.");
+        return;
+      }
+
+      if (title && content) {
+        const randomNum = Math.floor(Math.random() * 800) + 100;
+        boardPosts.unshift({
+          id: Date.now(),
+          author: `익명${randomNum}`,
+          title: title,
+          content: content,
+          likes: 0,
+          time: "방금 전"
+        });
+        boardTitle.value = "";
+        boardContent.value = "";
+        renderBoardPosts();
+      }
+    });
+
+    // 알레르기 모달
+    window.openAllergyModal = function(code) {
+      const info = allergyMap[code];
+      if (!info) return;
+
+      modalContent.innerHTML = `
+        <div class="bg-amber-50/80 p-3 rounded-xl border border-amber-200">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-black bg-amber-200 text-amber-800 px-2 py-0.5 rounded-md">${code}번</span>
+            <span class="font-bold text-slate-800 text-sm">${info.name}</span>
+          </div>
+          <p class="text-xs text-slate-600 leading-relaxed mt-1">${info.desc}</p>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-2">※ 알레르기 유발물질 반응이 있는 학생은 섭취 시 주의하세요.</p>
+      `;
+      allergyModal.classList.remove("hidden");
+      lucide.createIcons();
+    };
+
+    function closeModal() {
+      allergyModal.classList.add("hidden");
+    }
+
+    closeModalBtn.addEventListener("click", closeModal);
+    confirmModalBtn.addEventListener("click", closeModal);
+
+    // 희망 급식
+    function renderWishList() {
+      wishList.innerHTML = wishListArray.map((item, idx) => `
+        <div class="p-2.5 bg-white rounded-xl border border-slate-100 shadow-sm flex items-center justify-between text-xs">
+          <div>
+            <p class="font-bold text-slate-800">${item.menu}</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">${item.reason}</p>
+          </div>
+          <button onclick="voteWish(${idx})" class="flex items-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 font-bold px-2 py-1 rounded-lg transition-colors active:scale-95 text-[11px]">
+            <i data-lucide="heart" class="w-3 h-3 fill-red-500"></i> ${item.votes}
+          </button>
+        </div>
+      `).join("");
+      lucide.createIcons();
+    }
+
+    window.voteWish = function(idx) {
+      wishListArray[idx].votes++;
+      renderWishList();
+    };
+
+    wishForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const menu = wishMenuName.value.trim();
+      const reason = wishReason.value.trim() || "맛있는 급식을 원해요!";
+
+      if (menu) {
+        wishListArray.unshift({ menu, reason, votes: 1 });
+        wishMenuName.value = "";
+        wishReason.value = "";
+        renderWishList();
+      }
+    });
+
+    // 탭 전환
+    function switchTab(tabName) {
+      [tabMeal, tabTimetable, tabBoard, tabWish].forEach(btn => {
+        btn.className = "flex-1 py-2 rounded-xl hover:text-slate-700 flex items-center justify-center gap-1 transition-all";
+      });
+      mealView.classList.add("hidden");
+      timetableView.classList.add("hidden");
+      boardView.classList.add("hidden");
+      wishView.classList.add("hidden");
+      dateBar.classList.remove("hidden");
+
+      if (tabName === 'meal') {
+        tabMeal.className = "flex-1 py-2 rounded-xl bg-white text-blue-600 shadow-sm flex items-center justify-center gap-1 font-bold transition-all";
+        mealView.classList.remove("hidden");
+        renderMeal();
+      } else if (tabName === 'timetable') {
+        tabTimetable.className = "flex-1 py-2 rounded-xl bg-white text-indigo-600 shadow-sm flex items-center justify-center gap-1 font-bold transition-all";
+        timetableView.classList.remove("hidden");
+        renderTimetable();
+      } else if (tabName === 'board') {
+        tabBoard.className = "flex-1 py-2 rounded-xl bg-white text-emerald-600 shadow-sm flex items-center justify-center gap-1 font-bold transition-all";
+        boardView.classList.remove("hidden");
+        dateBar.classList.add("hidden");
+        renderBoardPosts();
+      } else if (tabName === 'wish') {
+        tabWish.className = "flex-1 py-2 rounded-xl bg-white text-blue-600 shadow-sm flex items-center justify-center gap-1 font-bold transition-all";
+        wishView.classList.remove("hidden");
+        dateBar.classList.add("hidden");
+        renderWishList();
+      }
+    }
+
+    clearSearchBtn.addEventListener("click", () => {
+      schoolSearch.value = "";
+      searchResults.classList.add("hidden");
+      clearSearchBtn.classList.add("hidden");
+    });
+
+    prevDateBtn.addEventListener("click", () => {
+      const cur = new Date(datePicker.value);
+      cur.setDate(cur.getDate() - 1);
+      datePicker.value = cur.toISOString().split('T')[0];
+      renderMeal();
+      renderTimetable();
+    });
+
+    nextDateBtn.addEventListener("click", () => {
+      const cur = new Date(datePicker.value);
+      cur.setDate(cur.getDate() + 1);
+      datePicker.value = cur.toISOString().split('T')[0];
+      renderMeal();
+      renderTimetable();
+    });
+
+    datePicker.addEventListener("change", () => {
+      renderMeal();
+      renderTimetable();
+    });
+
+    tabMeal.addEventListener("click", () => switchTab('meal'));
+    tabTimetable.addEventListener("click", () => switchTab('timetable'));
+    tabBoard.addEventListener("click", () => switchTab('board'));
+    tabWish.addEventListener("click", () => switchTab('wish'));
+
+    document.addEventListener("click", (e) => {
+      if (!schoolSearch.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.classList.add("hidden");
+      }
+    });
+
+    window.onload = function() {
+      lucide.createIcons();
+      renderMeal();
+    };
+  </script>
+</body>
+</html>
